@@ -1,6 +1,5 @@
 from math import asin, pi, cos
 import matplotlib.pyplot as plt
-import numpy as np
 from prettytable import PrettyTable
 
 a = -0.8
@@ -22,6 +21,7 @@ def ravn_points(a, b, n):
         x_i = a + i * (b - a) / n
         ans.append(x_i)
     return ans
+
 
 
 def optim_points(a, b, n):
@@ -93,7 +93,6 @@ def otklon(val_, arg):
         temp = abs(val_[i] - y[i])
         if temp > maxx:
             maxx = temp
-            j = i
 
     return maxx
 
@@ -103,6 +102,7 @@ table_L.field_names = ["Количество узлов (n)", "Количест�
                        "Максимальное отклонение (RLoptn)", "Максимальное отклонение (RNn)",
                        "Максимальное отклонение (RNoptn)"]
 
+plt.figure(figsize=(12, 6))
 for i in range(len(num)):
     n = num[i]
 
@@ -136,9 +136,44 @@ for i in range(len(num)):
         RNopt = otklon(N_opt, arg_m)
         # print("L_opt = ", L_opt)
 
-        table_L.add_row([n+1, m, RLn, RLopt, RNn, RNopt])
+        table_L.add_row([n + 1, m, RLn, RLopt, RNn, RNopt])
+
+    # строим графики
+    k = 200
+    x = ravn_points(a, b, k)
+    y = f(x)
+    L = []
+    N = []
+
+    L_opt = []
+    N_opt = []
+    for j in range(k + 1):
+        L.append(LIP(x[j], arg, val))
+        ks = n_ks(arg)  # был rg_m
+        N.append(NIP(x[j], arg, ks))
+
+        L_opt.append(LIP(x[j], arg_opt, val_opt))
+        ks = n_ks(arg_opt)
+        N_opt.append((NIP(x[j], arg_opt, ks)))
+    # print(len(x))
+    # print(len(L))
+
+    plt.subplot(231 + i)
+    plt.grid(True)
+    plt.plot(x, L, label="L")
+    plt.plot(x, L_opt, label="L_opt")
+    plt.plot(x, y, label="f(x)")
+    plt.text(-0.8, -0.2, f'Узлов: {n + 1}')
+    plt.legend()
+
+    plt.subplot(234 + i)
+    plt.grid(True)
+    plt.plot(x, N, label="N")
+    plt.plot(x, N_opt, label="N_opt")
+    plt.plot(x, y, label="f(x)")
+    plt.text(-0.8, -0.2, f'Узлов: {n + 1}')
+    plt.legend()
 
 print(table_L)
 
-
-
+plt.show()
