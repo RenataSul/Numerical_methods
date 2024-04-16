@@ -1,6 +1,7 @@
 import numpy as np
 from math import asin, pi, cos
 from prettytable import PrettyTable
+import matplotlib.pyplot as plt
 
 a = -0.8
 b = 1.2
@@ -22,7 +23,6 @@ def ravn_points(a, b, n):
         ans.append(x_i)
     return ans
 
-
 def optim_points(a, b, n):
     ans = []
     for i in range(n + 1):
@@ -30,6 +30,19 @@ def optim_points(a, b, n):
         ans.append(x_i)
     ans.reverse()
     return ans
+
+# def optim_points(a, b, n):
+#     ans = []
+#     for i in range(n + 1):
+#         if i == 0:
+#             ans.append(b)
+#         if i == n:
+#             ans.append(a)
+#         else:
+#             x_i = ((b - a) * cos(pi * (2 * i + 1) / (2 * (n + 1))) + (b + a)) / 2
+#             ans.append(x_i)
+#     ans.reverse()
+#     return ans
 
 
 def otklon(val_, arg):
@@ -40,7 +53,6 @@ def otklon(val_, arg):
         temp = abs(val_[i] - y[i])
         if temp > maxx:
             maxx = temp
-            j = i
 
     return maxx
 
@@ -68,17 +80,27 @@ def k_1(arg, val):
 
 def spline_1(x, arg, ks):
     n = len(arg)
+    # print("x: ", x)
 
     for i in range(n - 1):
         if arg[i] <= x <= arg[i + 1]:
             return ks[2 * i, 0] * x + ks[2 * i + 1, 0]
+
+    # for i in range(n - 1):
+    #     if arg[i] <= x <= arg[i + 1]:
+    #         print("great")
+    #         return ks[2 * i, 0] * x + ks[2 * i + 1, 0]
+    #     else:
+    #         print("arg[i]: ", arg[i])
+    #         print("arg[i+1]: ", arg[i+1])
+    #         break
 
 
 # КВАДРАТИЧНЫЙ СПЛАЙН
 def k_2(arg, val):
     n = len(arg)
 
-    x = np.zeros(3 * (n - 1), 3 * (n - 1))
+    x = np.zeros((3 * (n - 1), 3 * (n - 1)))
     y = np.zeros((3 * (n - 1), 1))
 
     y[-1] = 0  # естественный сплайн
@@ -121,8 +143,9 @@ def k_3(arg, val):
         h_arg.append(arg[i + 1] - arg[i])
         h_val.append(val[i + 1] - val[i])
 
-    H = np.zeros(n - 2)
+    H = np.zeros((n - 2, n - 2))
     gamma = np.zeros((n - 2, 1))
+
     for i in range(n - 2):
         H[i, i] = 2 * (h_arg[i + 1] + h_arg[i])
         if i > 0:
@@ -142,7 +165,7 @@ def k_3(arg, val):
     val_pr1 = []  # при первых произв
     for i in range(n - 1):
         val_pr1.append(h_val[i] / h_arg[i] - val_pr2[i + 1] * h_arg[i] / 6 - val_pr2[i] * h_arg[i] / 3)
-    ks = np.zeros(4 * (n - 1), 1)
+    ks = np.zeros((4 * (n - 1), 1))
     for i in range(n - 1):
         j = 4 * i
         ks[j] = val[i]
@@ -155,21 +178,19 @@ def k_3(arg, val):
 
 def spline_3(x, arg, ks):
     n = len(arg)
-
     for i in range(n - 1):
         if arg[i] <= x <= arg[i + 1]:
             j = 4 * i
-            return ks[j] + ks[j + 1] * (x - arg[i]) + ks[j + 2] * (x - arg[i]) ** 2 + ks[j + 3] * (x - arg[i]) ** 3
+            a = ks[j] + ks[j + 1] * (x - arg[i]) + ks[j + 2] * (x - arg[i]) ** 2 + ks[j + 3] * (x - arg[i]) ** 3
+            return a[0]
 
 
 table = PrettyTable()
 table.field_names = ["Количество узлов (n)", "Количество проверочных точек (m)", "Максимальное отклонение (RS1)",
-                     "Максимальное отклонение (RS1opt)", "Максимальное отклонение (RS2)",
-                     "Максимальное отклонение (RS2opt)", "Максимальное отклонение (RS3)",
-                     "Максимальное отклонение (RS3opt)"]
+                     "Максимальное отклонение (RS2)", "Максимальное отклонение (RS3)"]
 
-for i in range(len(num)):
-    n = num[i]
+for j in range(len(num)):
+    n = num[j]
 
     arg = ravn_points(a, b, n)
     val = f(arg)
@@ -187,31 +208,84 @@ for i in range(len(num)):
         S1opt = []
         S2opt = []
         S3opt = []
-        for i in range(m):
+        k1 = k_1(arg, val)
+        k2 = k_2(arg, val)
+        k3 = k_3(arg, val)
+        for i in range(m + 1):
             # при равномерном
-            ks = k_1(arg, val)
-            S1.append(spline_1(arg_m[i], arg, ks))
-            ks = k_2(arg, val)
-            S2.append(spline_2(arg_m[i], arg, ks))
-            ks = k_3(arg, val)
-            S3.append(spline_3(arg_m[i], arg, ks))
-
-            # при оптимальном
-            ks = k_1(arg_opt, val_opt)
-            S1opt.append(spline_1(arg_m[i], arg_opt, ks))
-            ks = k_2(arg_opt, val_opt)
-            S2opt.append(spline_2(arg_m[i], arg_opt, ks))
-            ks = k_3(arg_opt, val_opt)
-            S3opt.append(spline_3(arg_m[i], arg_opt, ks))
+            S1.append(spline_1(arg_m[i], arg, k1))
+            S2.append(spline_2(arg_m[i], arg, k2))
+            S3.append(spline_3(arg_m[i], arg, k3))
 
         RS1 = otklon(S1, arg_m)
         RS2 = otklon(S2, arg_m)
         RS3 = otklon(S3, arg_m)
 
-        RS1opt = otklon(S1opt, arg_m)
-        RS2opt = otklon(S2opt, arg_m)
-        RS3opt = otklon(S3opt, arg_m)
-
-        table.add_row([n + 1, m, RS1, RS2, RS3, RS1opt, RS2opt, RS3opt])
+        table.add_row([n + 1, m, RS1, RS2, RS3])
 
 print(table)
+
+###ГРАФИКИ
+def l_k(x, arg, k):
+    l_k = 1
+    n = len(arg)
+    for i in range(n):
+        if i != k:
+            l_k *= (x - arg[i]) / (arg[k] - arg[i])
+    return l_k
+
+
+def LIP(x, arg, val):  # x - индекс
+    n = len(arg)
+    ans = 0
+    for i in range(n):
+        ans += l_k(x, arg, i) * val[i]
+
+    return ans
+
+
+def otklon_list(val_, arg):
+    y = f(arg)
+    temp = []
+    for i in range(len(val_)):
+        temp.append(abs(val_[i] - y[i]))
+
+    return temp
+
+
+
+plt.figure(figsize=(12, 6))
+for i in range(len(num)):
+    k = 200
+    n = num[i]
+
+    arg = ravn_points(a, b, n)
+    val = f(arg)
+    arg_opt = optim_points(a, b, n)
+    val_opt = f(arg_opt)
+
+    x = ravn_points(a, b, k)
+    y = f(x)
+
+    L = []
+    L_opt = []
+    S3 = []
+
+    k3 = k_3(arg, val)
+    for j in range(k + 1):
+        L.append(LIP(x[j], arg, val))
+        S3.append(spline_3(x[i], arg, k3))
+
+    RL = otklon_list(L, x)
+    RS3 = otklon_list(S3, x)
+
+    # 321
+    plt.subplot(131 + i)
+    plt.grid(True)
+    plt.plot(x, RL, label='RL')
+    plt.plot(x, RS3, label='RS3')
+    plt.text(0.75, 1, f'Узлов: {n + 1}')
+    plt.legend()
+
+plt.subplot(131)
+plt.show()
